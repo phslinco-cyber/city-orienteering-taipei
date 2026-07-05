@@ -186,6 +186,25 @@
         .codex-flower { font-size: 0.8em; color: #6ab04c; font-weight: bold; white-space: nowrap; }
         .btn-unlock { background: #e84393; color: white; border: none; border-radius: 14px; padding: 5px 10px; font-size: 0.78em; font-weight: bold; cursor: pointer; white-space: nowrap; }
         .btn-unlock:hover { background: #d63074; }
+
+        .btn-share {
+            background-color: #3742fa;
+            color: white; border: none; width: 100%;
+            padding: 12px; font-size: 15px; border-radius: 25px;
+            cursor: pointer; margin-top: 10px; font-weight: bold; display: none;
+        }
+        .btn-share:hover { background-color: #2733d9; }
+        .shared-banner {
+            background: #eaf0ff; color: #2733d9; border: 1px solid #b8c6ff;
+            font-weight: bold; text-align: center; padding: 6px; border-radius: 6px;
+            margin-bottom: 8px; font-size: 0.9em;
+        }
+        .toast {
+            display: none; position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+            background: #2f3542; color: #fff; padding: 10px 16px; border-radius: 20px;
+            font-size: 0.9em; font-weight: bold; z-index: 999; box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+            max-width: 90%; text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -208,11 +227,14 @@
     <div id="routeDisplay" class="route-card"></div>
 
     <button id="plantBtn" class="btn-plant" onclick="plantCurrentRoute()">🌱 完成路線・種下這趟的花</button>
+    <button id="shareBtn" class="btn-share" onclick="shareRoute()">🔗 分享這條路線</button>
     <button id="googleBtn" class="btn-google" onclick="openGoogleMaps()">🗺️ 一鍵轉拋 Google Maps 導航</button>
 
     <div id="gardenPanel" class="garden-panel"></div>
     <div id="codexBox" class="codex"></div>
 </div>
+
+<div id="toast" class="toast"></div>
 
 <script>
     // 起點：東海大學。座標為近似值（適用盲盒估算），可再校正。
@@ -433,61 +455,13 @@
 
         let randomName = nameAdjs[Math.floor(Math.random() * nameAdjs.length)] + nameNouns[Math.floor(Math.random() * nameNouns.length)];
 
-        let flowerBar = selectedPoints.map(p => p.flower.emoji).join(" ");
-
-        let htmlContent = `
-            <div class="stats-badge">📜 ${randomName} (直線累積 ${totalDistance.toFixed(1)}K)</div>
-            <div class="warning-text">
-                ⚠️ 貼心提醒：加上街道折返，實際跑量約為直線的 1.15~1.2 倍。<br>
-                今天這趟跑完，手錶剛好會跳到 ${mode} 公里左右喔！
-            </div>
-            <ul class="point-list">
-                <li class="point-item">
-                    <span class="p-name">📍 起點：${START.name}</span>
-                    <span class="p-dist">START</span>
-                </li>
-        `;
-
-        selectedPoints.forEach((p, index) => {
-            htmlContent += `
-                <li class="point-item">
-                    <span class="p-name">📸 CP ${index + 1}：${p.name}<br>
-                        <span class="p-flower">${p.flower.emoji} 種下 ${p.flower.name}${p.flower.rare ? "（稀有）" : ""}</span>
-                    </span>
-                    <span class="p-dist">+${p.dist}K</span>
-                </li>
-            `;
+        renderRouteCard({
+            mode: mode,
+            name: randomName,
+            total: totalDistance,
+            points: selectedPoints,
+            breakfast: { name: chosenBreakfast.name, meters: Math.round(bDist * 1000) }
         });
-
-        htmlContent += `
-            </ul>
-            <div class="flower-summary">
-                🌱 本次可種下 ${selectedPoints.length} 朵花：${flowerBar}
-            </div>
-            <div class="breakfast-box">
-                🍳 終點補給：${chosenBreakfast.name}<br>
-                <span style="font-size: 0.82em; color: #f1f2f6;">(距離最後一站僅 ${(bDist*1000).toFixed(0)} 公尺，馬上吃到！)</span>
-            </div>
-        `;
-
-        currentBlooms = selectedPoints.map(p => p.flower);
-
-        const displayDiv = document.getElementById('routeDisplay');
-        const googleBtn = document.getElementById('googleBtn');
-        const plantBtn = document.getElementById('plantBtn');
-
-        displayDiv.style.display = 'none';
-        googleBtn.style.display = 'none';
-        plantBtn.style.display = 'none';
-        plantBtn.disabled = false;
-        plantBtn.textContent = '🌱 完成路線・種下這趟的花';
-
-        setTimeout(() => {
-            displayDiv.innerHTML = htmlContent;
-            displayDiv.style.display = 'block';
-            plantBtn.style.display = 'block';
-            googleBtn.style.display = 'block';
-        }, 50);
     }
 
     function openGoogleMaps() {
@@ -501,6 +475,127 @@
         const waypoints = waypointsArr.join('|');
         const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=walking`;
         window.open(url, '_blank');
+    }
+
+    /* ---------- 分享路線（把整條路線編碼進網址，好友可開到同一張任務卡） ---------- */
+    const PUBLIC_URL = "https://phslinco-cyber.github.io/city-orienteering-taipei/";
+    let lastRouteData = null;
+
+    function renderRouteCard(data, opts) {
+        opts = opts || {};
+        lastRouteData = data;
+        finalRouteNames = data.points.map(p => p.name);
+        currentBlooms = data.points.map(p => p.flower);
+
+        const flowerBar = data.points.map(p => p.flower.emoji).join(" ");
+        let htmlContent = `
+            ${opts.shared ? '<div class="shared-banner">👀 朋友分享給你的種花路線！按「生成」可換一張新的。</div>' : ''}
+            <div class="stats-badge">📜 ${data.name} (直線累積 ${Number(data.total).toFixed(1)}K)</div>
+            <div class="warning-text">
+                ⚠️ 貼心提醒：加上街道折返，實際跑量約為直線的 1.15~1.2 倍。<br>
+                今天這趟跑完，手錶剛好會跳到 ${data.mode} 公里左右喔！
+            </div>
+            <ul class="point-list">
+                <li class="point-item">
+                    <span class="p-name">📍 起點：${START.name}</span>
+                    <span class="p-dist">START</span>
+                </li>
+        `;
+        data.points.forEach((p, index) => {
+            htmlContent += `
+                <li class="point-item">
+                    <span class="p-name">📸 CP ${index + 1}：${p.name}<br>
+                        <span class="p-flower">${p.flower.emoji} 種下 ${p.flower.name}${p.flower.rare ? "（稀有）" : ""}</span>
+                    </span>
+                    <span class="p-dist">+${p.dist}K</span>
+                </li>
+            `;
+        });
+        htmlContent += `
+            </ul>
+            <div class="flower-summary">
+                🌱 本次可種下 ${data.points.length} 朵花：${flowerBar}
+            </div>
+            <div class="breakfast-box">
+                🍳 終點補給：${data.breakfast.name}<br>
+                <span style="font-size: 0.82em; color: #f1f2f6;">(距離最後一站僅 ${data.breakfast.meters} 公尺，馬上吃到！)</span>
+            </div>
+        `;
+
+        const displayDiv = document.getElementById('routeDisplay');
+        const googleBtn = document.getElementById('googleBtn');
+        const plantBtn = document.getElementById('plantBtn');
+        const shareBtn = document.getElementById('shareBtn');
+
+        displayDiv.style.display = 'none';
+        googleBtn.style.display = 'none';
+        plantBtn.style.display = 'none';
+        shareBtn.style.display = 'none';
+        plantBtn.disabled = false;
+        plantBtn.textContent = '🌱 完成路線・種下這趟的花';
+
+        setTimeout(() => {
+            displayDiv.innerHTML = htmlContent;
+            displayDiv.style.display = 'block';
+            plantBtn.style.display = 'block';
+            shareBtn.style.display = 'block';
+            googleBtn.style.display = 'block';
+        }, 50);
+    }
+
+    function buildShareUrl(data) {
+        const payload = {
+            m: data.mode,
+            n: data.name,
+            t: Number(Number(data.total).toFixed(2)),
+            p: data.points.map(p => ({ c: p.name, d: p.dist, e: p.flower.emoji, f: p.flower.name, r: p.flower.rare ? 1 : 0 })),
+            b: data.breakfast.name,
+            bd: data.breakfast.meters
+        };
+        const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+        return PUBLIC_URL + "#r=" + b64;
+    }
+
+    function decodeShared() {
+        const h = location.hash || '';
+        const m = h.match(/[#&]r=([^&]+)/);
+        if (!m) return null;
+        try {
+            const payload = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
+            if (!payload || !Array.isArray(payload.p)) return null;
+            return {
+                mode: String(payload.m),
+                name: payload.n,
+                total: Number(payload.t),
+                points: payload.p.map(x => ({ name: x.c, dist: x.d, flower: { emoji: x.e, name: x.f, rare: !!x.r } })),
+                breakfast: { name: payload.b, meters: payload.bd }
+            };
+        } catch (e) { return null; }
+    }
+
+    function shareRoute() {
+        if (!lastRouteData) return;
+        const url = buildShareUrl(lastRouteData);
+        if (navigator.share) {
+            navigator.share({ title: "台中種花定向盲盒", text: "來跑我的種花路線，一起收集花朵吧！🌻", url }).catch(() => {});
+            return;
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url)
+                .then(() => showToast("🔗 連結已複製！貼給朋友即可"))
+                .catch(() => window.prompt("複製這個連結分享給朋友：", url));
+        } else {
+            window.prompt("複製這個連結分享給朋友：", url);
+        }
+    }
+
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        if (!t) return;
+        t.textContent = msg;
+        t.style.display = 'block';
+        clearTimeout(window.__toastTimer);
+        window.__toastTimer = setTimeout(() => { t.style.display = 'none'; }, 2600);
     }
 
     /* ---------- 花園收集系統（localStorage） ---------- */
@@ -618,6 +713,15 @@
 
     renderGarden();
     renderCodex();
+
+    (function initShared() {
+        const shared = decodeShared();
+        if (shared) {
+            const sel = document.getElementById('kmSelect');
+            if (sel && shared.mode) sel.value = shared.mode;
+            renderRouteCard(shared, { shared: true });
+        }
+    })();
 </script>
 </body>
 </html>
