@@ -132,6 +132,60 @@
             font-size: 0.95em;
             text-align: center;
         }
+
+        .btn-plant {
+            background-color: #6ab04c;
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 12px;
+            font-size: 15px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-weight: bold;
+            display: none;
+        }
+        .btn-plant:hover { background-color: #558b3a; }
+        .btn-plant:disabled { background-color: #b7c9ad; cursor: default; }
+
+        .garden-panel {
+            margin-top: 16px;
+            background: #f6fbf4;
+            border: 1px solid #d3e8c9;
+            border-radius: 10px;
+            padding: 12px;
+        }
+        .garden-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .garden-title { font-weight: bold; font-size: 1.05em; color: #3d7a1f; }
+        .garden-lvl { background: #6ab04c; color: white; font-weight: bold; font-size: 0.8em; padding: 3px 8px; border-radius: 12px; }
+        .garden-stats { font-size: 0.85em; color: #4b5a3f; text-align: center; margin-bottom: 8px; line-height: 1.5; }
+        .garden-next { color: #e84393; font-weight: bold; }
+        .flower-bed {
+            background: #eef7e9;
+            border: 1px dashed #a9d493;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 1.25em;
+            line-height: 1.5;
+            word-break: break-word;
+            text-align: center;
+            min-height: 28px;
+        }
+        .species-list { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px; }
+        .species { background: white; border: 1px solid #dcdde1; border-radius: 12px; padding: 2px 8px; font-size: 0.8em; font-weight: bold; color: #2f3542; }
+        .species-empty { font-size: 0.8em; color: #8a8f99; }
+        .btn-reset { margin-top: 10px; background: none; border: none; color: #b0b3ba; font-size: 0.78em; cursor: pointer; text-decoration: underline; padding: 0; }
+
+        .codex { margin-top: 16px; background: #fff6fb; border: 1px solid #f3d4e6; border-radius: 10px; padding: 12px; }
+        .codex-title { font-weight: bold; color: #c2286f; font-size: 0.95em; margin-bottom: 8px; }
+        .codex-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed #f0d5e3; gap: 8px; }
+        .codex-item:last-child { border-bottom: none; }
+        .codex-item.unlocked .codex-name { color: #c2286f; }
+        .codex-name { font-weight: bold; font-size: 0.9em; color: #7a6b73; }
+        .codex-flower { font-size: 0.8em; color: #6ab04c; font-weight: bold; white-space: nowrap; }
+        .btn-unlock { background: #e84393; color: white; border: none; border-radius: 14px; padding: 5px 10px; font-size: 0.78em; font-weight: bold; cursor: pointer; white-space: nowrap; }
+        .btn-unlock:hover { background: #d63074; }
     </style>
 </head>
 <body>
@@ -153,7 +207,11 @@
 
     <div id="routeDisplay" class="route-card"></div>
 
+    <button id="plantBtn" class="btn-plant" onclick="plantCurrentRoute()">🌱 完成路線・種下這趟的花</button>
     <button id="googleBtn" class="btn-google" onclick="openGoogleMaps()">🗺️ 一鍵轉拋 Google Maps 導航</button>
+
+    <div id="gardenPanel" class="garden-panel"></div>
+    <div id="codexBox" class="codex"></div>
 </div>
 
 <script>
@@ -220,11 +278,7 @@
         { name: "新社花海古堡", lat: 24.1900, lon: 120.8080, zone: "FLOWER", flower: true, special: true },
         { name: "中社觀光花市", lat: 24.3080, lon: 120.7250, zone: "FLOWER", flower: true, special: true },
         { name: "后里花田馬場", lat: 24.3040, lon: 120.7120, zone: "FLOWER", flower: true, special: true },
-        { name: "外埔忘憂谷", lat: 24.3350, lon: 120.6600, zone: "FLOWER", flower: true, special: true },
-
-        // 海線 (COAST)
-        { name: "高美濕地", lat: 24.3120, lon: 120.5490, zone: "COAST" },
-        { name: "梧棲三井Outlet", lat: 24.2860, lon: 120.5010, zone: "COAST" }
+        { name: "外埔忘憂谷", lat: 24.3350, lon: 120.6600, zone: "FLOWER", flower: true, special: true }
     ];
 
     const baseBreakfasts = [
@@ -416,15 +470,22 @@
             </div>
         `;
 
+        currentBlooms = selectedPoints.map(p => p.flower);
+
         const displayDiv = document.getElementById('routeDisplay');
         const googleBtn = document.getElementById('googleBtn');
+        const plantBtn = document.getElementById('plantBtn');
 
         displayDiv.style.display = 'none';
         googleBtn.style.display = 'none';
+        plantBtn.style.display = 'none';
+        plantBtn.disabled = false;
+        plantBtn.textContent = '🌱 完成路線・種下這趟的花';
 
         setTimeout(() => {
             displayDiv.innerHTML = htmlContent;
             displayDiv.style.display = 'block';
+            plantBtn.style.display = 'block';
             googleBtn.style.display = 'block';
         }, 50);
     }
@@ -441,6 +502,122 @@
         const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=walking`;
         window.open(url, '_blank');
     }
+
+    /* ---------- 花園收集系統（localStorage） ---------- */
+    const GARDEN_KEY = 'taichungGardenV1';
+    let currentBlooms = [];
+    const codexSpots = landmarkPool.filter(p => p.special);
+
+    function getGarden() {
+        let g;
+        try { g = JSON.parse(localStorage.getItem(GARDEN_KEY)); } catch (e) { g = null; }
+        g = g || {};
+        return {
+            flowers: g.flowers || {},
+            totalPlanted: g.totalPlanted || 0,
+            routesDone: g.routesDone || 0,
+            rareUnlocked: g.rareUnlocked || {}
+        };
+    }
+    function saveGarden(g) { localStorage.setItem(GARDEN_KEY, JSON.stringify(g)); }
+
+    function levelInfo(total) {
+        const titles = ['種子', '發芽', '花苗', '小花圃', '花園', '花海', '花海達人'];
+        const lvl = Math.floor(total / 12);
+        return {
+            level: lvl + 1,
+            title: titles[Math.min(lvl, titles.length - 1)],
+            toNext: Math.max(0, (lvl + 1) * 12 - total)
+        };
+    }
+
+    function plantCurrentRoute() {
+        if (!currentBlooms.length) return;
+        const g = getGarden();
+        currentBlooms.forEach(b => {
+            const key = b.emoji + ' ' + b.name;
+            g.flowers[key] = (g.flowers[key] || 0) + 1;
+            g.totalPlanted += 1;
+        });
+        g.routesDone += 1;
+        saveGarden(g);
+        currentBlooms = [];
+        const btn = document.getElementById('plantBtn');
+        btn.disabled = true;
+        btn.textContent = '🌸 已種下！再生成一張新任務卡吧';
+        renderGarden();
+    }
+
+    function unlockRare(name, emoji, flowerName) {
+        const g = getGarden();
+        if (g.rareUnlocked[name]) return;
+        g.rareUnlocked[name] = true;
+        const key = emoji + ' ' + flowerName;
+        g.flowers[key] = (g.flowers[key] || 0) + 1;
+        g.totalPlanted += 1;
+        saveGarden(g);
+        renderGarden();
+        renderCodex();
+    }
+
+    function resetGarden() {
+        if (confirm('確定要清空花園嗎？此動作無法復原。')) {
+            localStorage.removeItem(GARDEN_KEY);
+            renderGarden();
+            renderCodex();
+        }
+    }
+
+    function renderGarden() {
+        const g = getGarden();
+        const li = levelInfo(g.totalPlanted);
+        const entries = Object.entries(g.flowers).sort((a, b) => b[1] - a[1]);
+
+        let bed = '', shown = 0;
+        for (const [k, c] of entries) {
+            const emoji = k.split(' ')[0];
+            for (let i = 0; i < c && shown < 60; i++) { bed += emoji; shown++; }
+        }
+        if (!bed) bed = '🟫🟫🟫🟫🟫🟫🟫🟫<br><span style="font-size:0.6em;color:#8a8f99;">空空的花圃，快跑一趟種花吧！</span>';
+
+        const speciesHtml = entries.length
+            ? entries.map(([k, c]) => `<span class="species">${k} ×${c}</span>`).join('')
+            : '<span class="species-empty">尚未收集任何花朵</span>';
+
+        document.getElementById('gardenPanel').innerHTML = `
+            <div class="garden-head">
+                <span class="garden-title">🌼 我的花園</span>
+                <span class="garden-lvl">Lv.${li.level} ${li.title}</span>
+            </div>
+            <div class="garden-stats">
+                已種 <b>${g.totalPlanted}</b> 朵 ・ 完成 <b>${g.routesDone}</b> 趟 ・ 花種 <b>${entries.length}</b> 種<br>
+                <span class="garden-next">再種 ${li.toNext} 朵即可升級 →</span>
+            </div>
+            <div class="flower-bed">${bed}</div>
+            <div class="species-list">${speciesHtml}</div>
+            <button class="btn-reset" onclick="resetGarden()">🗑️ 清空花園</button>
+        `;
+    }
+
+    function renderCodex() {
+        const g = getGarden();
+        const items = codexSpots.map(p => {
+            const b = flowerFor(p);
+            const unlocked = !!g.rareUnlocked[p.name];
+            return `
+                <div class="codex-item ${unlocked ? 'unlocked' : ''}">
+                    <span class="codex-name">${unlocked ? b.emoji : '🔒'} ${p.name}</span>
+                    ${unlocked
+                        ? `<span class="codex-flower">已收藏 ${b.emoji}${b.name}</span>`
+                        : `<button class="btn-unlock" onclick="unlockRare('${p.name}','${b.emoji}','${b.name}')">🚴 我去過，解鎖</button>`}
+                </div>`;
+        }).join('');
+        document.getElementById('codexBox').innerHTML =
+            `<div class="codex-title">🚴 台中花海圖鑑（遠方花田・騎車或開車解鎖）</div>${items}`;
+    }
+
+    renderGarden();
+    renderCodex();
 </script>
 </body>
 </html>
