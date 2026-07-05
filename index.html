@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>城市定向盲盒 4.9 雙軌探索版</title>
+    <title>台中種花定向盲盒 · 東海出發</title>
     <style>
         body {
             font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
-            background-color: #f1f2f6;
+            background: linear-gradient(160deg, #fdeef4 0%, #eef7ef 100%);
             color: #2f3542;
             padding: 10px;
             margin: 0;
@@ -22,8 +22,9 @@
             border-radius: 12px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.08);
         }
-        h1 { color: #ff6b6b; font-size: 1.5em; margin: 5px 0 12px 0; text-align: center; }
-        
+        h1 { color: #e84393; font-size: 1.4em; margin: 5px 0 2px 0; text-align: center; }
+        .subtitle { text-align: center; color: #6ab04c; font-weight: bold; font-size: 0.85em; margin-bottom: 12px; }
+
         .control-panel {
             background: #fdfbfb;
             padding: 10px;
@@ -41,9 +42,9 @@
             background: white;
             margin-bottom: 10px;
         }
-        
+
         .btn {
-            background-color: #ff6b6b;
+            background-color: #e84393;
             color: white;
             border: none;
             width: 100%;
@@ -54,8 +55,8 @@
             font-weight: bold;
             transition: background 0.2s;
         }
-        .btn:hover { background-color: #ff4757; }
-        
+        .btn:hover { background-color: #d63074; }
+
         .btn-google {
             background-color: #34a853;
             color: white;
@@ -73,12 +74,12 @@
         .route-card {
             background: #fafafa;
             padding: 12px;
-            border: 1px solid #ff6b6b;
+            border: 1px solid #e84393;
             border-radius: 8px;
             display: none;
         }
         .stats-badge {
-            background: #ff6b6b;
+            background: #e84393;
             color: white;
             font-weight: bold;
             text-align: center;
@@ -88,12 +89,12 @@
             margin-bottom: 8px;
         }
         .warning-text {
-            color: #e15f41;
+            color: #b8681e;
             font-size: 0.85em;
             text-align: center;
             margin-bottom: 10px;
             font-weight: bold;
-            background: #ffeaa7;
+            background: #fff4d6;
             padding: 5px;
             border-radius: 4px;
         }
@@ -107,8 +108,20 @@
         }
         .point-item:last-child { border-bottom: none; }
         .p-name { font-weight: bold; color: #2f3542; }
-        .p-dist { color: #ff6b6b; font-size: 0.85em; font-weight: bold; }
-        
+        .p-flower { font-size: 0.8em; color: #e84393; font-weight: bold; }
+        .p-dist { color: #e84393; font-size: 0.85em; font-weight: bold; white-space: nowrap; }
+
+        .flower-summary {
+            background: #eef7ef;
+            border: 1px dashed #6ab04c;
+            color: #3d7a1f;
+            font-weight: bold;
+            padding: 8px;
+            border-radius: 6px;
+            margin-top: 10px;
+            text-align: center;
+            font-size: 0.9em;
+        }
         .breakfast-box {
             background: #2f3542;
             color: #eccc68;
@@ -124,173 +137,162 @@
 <body>
 
 <div class="container">
-    <h1>🎲 城市定向任務盲盒 4.9</h1>
-    
+    <h1>🌻 台中種花定向盲盒</h1>
+    <div class="subtitle">東海大學出發・邊跑邊種花探索版</div>
+
     <div class="control-panel">
         <label for="kmSelect">🎯 設定今日目標里程：</label>
         <select id="kmSelect">
-            <option value="5">5 公里 (市區恢復跑)</option>
-            <option value="8">8 公里 (市區配速跑)</option>
-            <option value="10" selected>10 公里 (跨區挑戰賽)</option>
-            <option value="15">15 公里 (極限拓荒 LSD)</option>
+            <option value="5">5 公里 (東海校園恢復跑)</option>
+            <option value="8">8 公里 (西屯逢甲配速跑)</option>
+            <option value="10" selected>10 公里 (跨區花園挑戰)</option>
+            <option value="15">15 公里 (台中市區拓荒 LSD)</option>
         </select>
-        <button class="btn" onclick="generateDynamicRoute()">⚡ 一鍵生成任務卡</button>
+        <button class="btn" onclick="generateDynamicRoute()">⚡ 一鍵生成種花任務卡</button>
     </div>
-    
+
     <div id="routeDisplay" class="route-card"></div>
-    
+
     <button id="googleBtn" class="btn-google" onclick="openGoogleMaps()">🗺️ 一鍵轉拋 Google Maps 導航</button>
 </div>
 
 <script>
-    // 加入了士林、北投的精華地標，共 130 個池子
+    // 起點：東海大學。座標為近似值（適用盲盒估算），可再校正。
+    const START = { name: "東海大學", lat: 24.1817, lon: 120.6017 };
+
+    // zone 分區：TH=東海/西屯核心、CENTRAL=中西區市中心、S=南屯、N=北屯、FLOWER=花海遠征、COAST=海線
     const landmarkPool = [
-        // 大安、中正、萬華、大同 (W / S) - 市中心
-        { name: "中正紀念堂", lat: 25.0347, lon: 121.5218, zone: "W" }, { name: "台北府城北門", lat: 25.0478, lon: 121.5115, zone: "W" },
-        { name: "國立臺灣博物館", lat: 25.0428, lon: 121.5150, zone: "W" }, { name: "台北植物園", lat: 25.0322, lon: 121.5098, zone: "W" },
-        { name: "華山1914文創園區", lat: 25.0441, lon: 121.5294, zone: "W" }, { name: "紀州庵文學森林", lat: 25.0210, lon: 121.5190, zone: "W" },
-        { name: "光華商場", lat: 25.0446, lon: 121.5318, zone: "W" }, { name: "建國假日花市", lat: 25.0390, lon: 121.5370, zone: "W" },
-        { name: "大安 青田街文青巷弄", lat: 25.0295, lon: 121.5310, zone: "W" }, { name: "台北永康公園", lat: 25.0312, lon: 121.5302, zone: "W" },
-        { name: "永康街芒果冰地標", lat: 25.0325, lon: 121.5295, zone: "W" }, { name: "榕錦時光生活園區", lat: 25.0315, lon: 121.5260, zone: "W" },
-        { name: "師範大學紅磚大樓", lat: 25.0263, lon: 121.5276, zone: "W" }, { name: "大安 成功市場", lat: 25.0280, lon: 121.5440, zone: "S" },
-        { name: "西門紅樓", lat: 25.0422, lon: 121.5064, zone: "W" }, { name: "龍山寺", lat: 25.0371, lon: 121.4999, zone: "W" },
-        { name: "剝皮寮歷史街區", lat: 25.0366, lon: 121.5020, zone: "W" }, { name: "迪化街霞海城隍廟", lat: 25.0556, lon: 121.5100, zone: "W" },
-        { name: "西本願寺廣場", lat: 25.0410, lon: 121.5075, zone: "W" }, { name: "台灣工藝研究發展中心台北分館", lat: 25.0320, lon: 121.5140, zone: "W" },
-        { name: "大稻埕碼頭廣場", lat: 25.0569, lon: 121.5065, zone: "W" }, { name: "自來水博物館", lat: 25.0125, lon: 121.5295, zone: "S" },
-        { name: "寶藏巖聚落", lat: 25.0105, lon: 121.5323, zone: "S" }, { name: "總統府", lat: 25.0398, lon: 121.5120, zone: "W" },
-        { name: "二二八和平紀念公園", lat: 25.0415, lon: 121.5152, zone: "W" }, { name: "台灣大學椰林大道", lat: 25.0173, lon: 121.5361, zone: "S" },
-        { name: "公館水岸廣場", lat: 25.0145, lon: 121.5320, zone: "S" }, { name: "青年公園花鐘", lat: 25.0240, lon: 121.5030, zone: "W" },
-        { name: "馬場町紀念公園", lat: 25.0200, lon: 121.4980, zone: "W" }, { name: "台北當代藝術館", lat: 25.0505, lon: 121.5180, zone: "W" },
-        { name: "台北車站大廳", lat: 25.0478, lon: 121.5170, zone: "W" }, { name: "撫臺街洋樓", lat: 25.0465, lon: 121.5115, zone: "W" },
-        { name: "迪化街十連棟", lat: 25.0620, lon: 121.5100, zone: "W" }, { name: "寧夏夜市牌樓", lat: 25.0560, lon: 121.5155, zone: "W" },
-        { name: "南機場夜市牌樓", lat: 25.0275, lon: 121.5045, zone: "W" }, { name: "華山大草原", lat: 25.0460, lon: 121.5255, zone: "W" },
-        { name: "大安森林公園捷運站陽光大廳", lat: 25.0333, lon: 121.5352, zone: "W" }, { name: "艋舺清水巖", lat: 25.0410, lon: 121.5010, zone: "W" },
-        { name: "台北鄉土教育中心", lat: 25.0360, lon: 121.5015, zone: "W" }, { name: "水源市場", lat: 25.0140, lon: 121.5325, zone: "S" },
+        // 東海 / 西屯核心 (TH) — 離起點最近
+        { name: "東海大學路思義教堂", lat: 24.1795, lon: 120.6016, zone: "TH", flower: true },
+        { name: "東海大學文理大道", lat: 24.1806, lon: 120.6030, zone: "TH" },
+        { name: "東海乳品小棧", lat: 24.1838, lon: 120.5992, zone: "TH" },
+        { name: "東海藝術街商圈", lat: 24.1832, lon: 120.6082, zone: "TH" },
+        { name: "東海別墅商圈", lat: 24.1806, lon: 120.6100, zone: "TH" },
+        { name: "台中都會公園", lat: 24.2007, lon: 120.5940, zone: "TH", flower: true },
+        { name: "望高寮夜景公園", lat: 24.1652, lon: 120.5978, zone: "TH" },
+        { name: "鞋寶觀光工廠", lat: 24.1905, lon: 120.6205, zone: "TH" },
+        { name: "逢甲夜市文華路", lat: 24.1785, lon: 120.6467, zone: "TH" },
+        { name: "逢甲大學", lat: 24.1793, lon: 120.6470, zone: "TH" },
+        { name: "秋紅谷生態公園", lat: 24.1663, lon: 120.6390, zone: "TH", flower: true },
+        { name: "台中國家歌劇院", lat: 24.1626, lon: 120.6407, zone: "TH" },
+        { name: "市政市民廣場", lat: 24.1615, lon: 120.6470, zone: "TH" },
+        { name: "中央公園(水湳)", lat: 24.1970, lon: 120.6420, zone: "TH", flower: true },
+        { name: "惠來公園", lat: 24.1652, lon: 120.6440, zone: "TH", flower: true },
+        { name: "福星公園", lat: 24.1680, lon: 120.6360, zone: "TH", flower: true },
+        { name: "朝馬運動公園", lat: 24.1640, lon: 120.6350, zone: "TH", flower: true },
+        { name: "東海大學農牧場花圃", lat: 24.1858, lon: 120.5980, zone: "TH", flower: true },
+        { name: "台糖湖濱生態園區", lat: 24.1848, lon: 120.6280, zone: "TH", flower: true },
+        { name: "潮洋環保公園", lat: 24.1770, lon: 120.6360, zone: "TH", flower: true },
 
-        // 信義、松山、東區 (E) - 市中心
-        { name: "遠企購物中心", lat: 25.0265, lon: 121.5490, zone: "E" }, { name: "SOGO 忠孝館", lat: 25.0415, lon: 121.5450, zone: "E" },
-        { name: "台北101", lat: 25.0336, lon: 121.5646, zone: "E" }, { name: "國父紀念館", lat: 25.0396, lon: 121.5602, zone: "E" },
-        { name: "松山文創園區", lat: 25.0440, lon: 121.5613, zone: "E" }, { name: "臺北大巨蛋", lat: 25.0415, lon: 121.5586, zone: "E" },
-        { name: "四四南村", lat: 25.0315, lon: 121.5610, zone: "E" }, { name: "BELLAVITA", lat: 25.0398, lon: 121.5673, zone: "E" },
-        { name: "象山步道入口", lat: 25.0270, lon: 121.5700, zone: "E" }, { name: "台北小巨蛋", lat: 25.0520, lon: 121.5535, zone: "E" },
-        { name: "彩虹橋 (錫口碼頭)", lat: 25.0506, lon: 121.5768, zone: "E" }, { name: "松山慈祐宮", lat: 25.0502, lon: 121.5772, zone: "E" },
-        { name: "迎風河濱公園", lat: 25.0735, lon: 121.5450, zone: "E" }, { name: "臨江街觀光夜市", lat: 25.0298, lon: 121.5540, zone: "E" },
-        { name: "觀山河濱公園", lat: 25.0700, lon: 121.5650, zone: "E" }, { name: "微風南山", lat: 25.0340, lon: 121.5665, zone: "E" },
-        { name: "微風廣場 創始店", lat: 25.0460, lon: 121.5435, zone: "E" }, { name: "松山飛機巷", lat: 25.0675, lon: 121.5430, zone: "E" },
-        { name: "新光三越A11", lat: 25.0365, lon: 121.5668, zone: "E" }, { name: "信義威秀影城", lat: 25.0355, lon: 121.5660, zone: "E" },
-        { name: "幾米月亮公車", lat: 25.0327, lon: 121.5652, zone: "E" }, { name: "松基公園", lat: 25.0558, lon: 121.5455, zone: "E" },
-        { name: "民生社區富錦街", lat: 25.0601, lon: 121.5620, zone: "E" }, { name: "延壽一號公園", lat: 25.0585, lon: 121.5645, zone: "E" },
-        { name: "介壽公園", lat: 25.0570, lon: 121.5580, zone: "E" }, { name: "五常公園", lat: 25.0610, lon: 121.5410, zone: "E" },
-        { name: "榮星花園噴泉", lat: 25.0625, lon: 121.5390, zone: "E" }, { name: "建國啤酒廠", lat: 25.0460, lon: 121.5350, zone: "E" },
-        { name: "忠泰美術館", lat: 25.0445, lon: 121.5370, zone: "E" }, { name: "大安森林公園露天舞台", lat: 25.0315, lon: 121.5350, zone: "E" },
-        { name: "瑠公圳公園", lat: 25.0410, lon: 121.5450, zone: "E" }, { name: "通化公園", lat: 25.0285, lon: 121.5550, zone: "E" },
-        { name: "台北偶戲館", lat: 25.0475, lon: 121.5620, zone: "E" }, { name: "頂好名店城", lat: 25.0415, lon: 121.5468, zone: "E" },
-        { name: "微風信義", lat: 25.0395, lon: 121.5655, zone: "E" }, { name: "信義香堤大道廣場", lat: 25.0375, lon: 121.5665, zone: "E" },
-        { name: "松山車站祈願鐘", lat: 25.0490, lon: 121.5780, zone: "E" }, { name: "饒河街夜市慈祐宮端", lat: 25.0503, lon: 121.5765, zone: "E" },
-        { name: "富台公園", lat: 25.0425, lon: 121.5745, zone: "E" }, { name: "五分埔商圈入口", lat: 25.0475, lon: 121.5795, zone: "E" },
+        // 中 / 西區市中心 (CENTRAL)
+        { name: "台中火車站", lat: 24.1369, lon: 120.6857, zone: "CENTRAL" },
+        { name: "宮原眼科", lat: 24.1380, lon: 120.6855, zone: "CENTRAL" },
+        { name: "第四信用合作社", lat: 24.1418, lon: 120.6792, zone: "CENTRAL" },
+        { name: "台中公園湖心亭", lat: 24.1449, lon: 120.6847, zone: "CENTRAL", flower: true },
+        { name: "綠川水岸廊道", lat: 24.1385, lon: 120.6840, zone: "CENTRAL", flower: true },
+        { name: "柳川水岸", lat: 24.1420, lon: 120.6760, zone: "CENTRAL", flower: true },
+        { name: "一中街商圈", lat: 24.1500, lon: 120.6840, zone: "CENTRAL" },
+        { name: "草悟道", lat: 24.1500, lon: 120.6640, zone: "CENTRAL", flower: true },
+        { name: "審計新村", lat: 24.1470, lon: 120.6620, zone: "CENTRAL", flower: true },
+        { name: "國立自然科學博物館", lat: 24.1580, lon: 120.6660, zone: "CENTRAL", flower: true },
+        { name: "國立台灣美術館綠園道", lat: 24.1418, lon: 120.6640, zone: "CENTRAL", flower: true },
+        { name: "台中州廳", lat: 24.1400, lon: 120.6770, zone: "CENTRAL" },
+        { name: "台中文學館", lat: 24.1400, lon: 120.6690, zone: "CENTRAL", flower: true },
+        { name: "台中孔廟", lat: 24.1570, lon: 120.6960, zone: "CENTRAL" },
+        { name: "台中忠烈祠", lat: 24.1560, lon: 120.6958, zone: "CENTRAL" },
+        { name: "文心森林公園", lat: 24.1490, lon: 120.6430, zone: "CENTRAL", flower: true },
+        { name: "豐樂雕塑公園", lat: 24.1360, lon: 120.6440, zone: "CENTRAL", flower: true },
+        { name: "東峰公園", lat: 24.1500, lon: 120.6970, zone: "CENTRAL", flower: true },
+        { name: "旱溪樂成宮", lat: 24.1420, lon: 120.7010, zone: "CENTRAL" },
+        { name: "國立中興大學", lat: 24.1228, lon: 120.6742, zone: "CENTRAL", flower: true },
+        { name: "台中刑務所演武場", lat: 24.1400, lon: 120.6720, zone: "CENTRAL" },
+        { name: "第五市場", lat: 24.1360, lon: 120.6710, zone: "CENTRAL" },
 
-        // 內湖、南港、大直 (N_E) - 拓荒區
-        { name: "美麗華摩天輪", lat: 25.0830, lon: 121.5560, zone: "N_E" }, { name: "碧湖公園", lat: 25.0815, lon: 121.5830, zone: "N_E" },
-        { name: "台北流行音樂中心", lat: 25.0525, lon: 121.5990, zone: "N_E" }, { name: "南港瓶蓋工廠", lat: 25.0535, lon: 121.6050, zone: "N_E" },
-        { name: "中研院胡適紀念館", lat: 25.0415, lon: 121.6135, zone: "N_E" }, { name: "實踐大學設計學院", lat: 25.0845, lon: 121.5460, zone: "N_E" },
-        { name: "大湖公園錦帶橋", lat: 25.0835, lon: 121.6025, zone: "N_E" }, { name: "大直橋大直端", lat: 25.0760, lon: 121.5465, zone: "N_E" },
-        { name: "內湖運動公園", lat: 25.0685, lon: 121.5735, zone: "N_E" }, { name: "南港車站CITYLINK", lat: 25.0525, lon: 121.6060, zone: "N_E" },
-        { name: "南港軟體園區水池", lat: 25.0595, lon: 121.6145, zone: "N_E" }, { name: "中國信託金融園區", lat: 25.0598, lon: 121.6165, zone: "N_E" },
-        { name: "西湖市場大樓", lat: 25.0822, lon: 121.5672, zone: "N_E" }, { name: "洲子一號公園", lat: 25.0810, lon: 121.5695, zone: "N_E" },
-        { name: "港墘公園", lat: 25.0790, lon: 121.5755, zone: "N_E" }, { name: "內湖737商圈牌樓", lat: 25.0792, lon: 121.5790, zone: "N_E" },
-        { name: "葫洲白鷺鷥保護區", lat: 25.0725, lon: 121.6080, zone: "N_E" }, { name: "東湖櫻花林樂活公園", lat: 25.0678, lon: 121.6120, zone: "N_E" },
-        { name: "南港展覽館一館", lat: 25.0555, lon: 121.6175, zone: "N_E" }, { name: "南港經貿公園", lat: 25.0575, lon: 121.6150, zone: "N_E" },
-        { name: "玉成公園游泳池", lat: 25.0435, lon: 121.5865, zone: "N_E" }, { name: "後山埤大安坡地", lat: 25.0410, lon: 121.5815, zone: "N_E" },
-        { name: "新庄仔新興公園", lat: 25.0495, lon: 121.5985, zone: "N_E" }, { name: "大直忠烈祠", lat: 25.0795, lon: 121.5330, zone: "N_E" },
-        { name: "大直美堤河濱公園", lat: 25.0745, lon: 121.5570, zone: "N_E" }, { name: "內湖花市新址", lat: 25.0635, lon: 121.5725, zone: "N_E" },
-        { name: "舊宗大潤發廣場", lat: 25.0615, lon: 121.5745, zone: "N_E" }, { name: "成美右岸河濱公園", lat: 25.0535, lon: 121.5810, zone: "N_E" },
-        { name: "中視大樓廣場", lat: 25.0570, lon: 121.5905, zone: "N_E" }, { name: "大直下塔悠公園", lat: 25.0715, lon: 121.5630, zone: "N_E" },
+        // 南屯 / 北屯 (S / N)
+        { name: "彩虹眷村", lat: 24.1340, lon: 120.6100, zone: "S" },
+        { name: "南屯萬和宮", lat: 24.1370, lon: 120.6420, zone: "S" },
+        { name: "豐富公園", lat: 24.1450, lon: 120.6480, zone: "S", flower: true },
+        { name: "北屯兒童公園", lat: 24.1620, lon: 120.6900, zone: "N", flower: true },
+        { name: "大坑9號步道口", lat: 24.1830, lon: 120.7480, zone: "N" },
+        { name: "洲際棒球場", lat: 24.2000, lon: 120.6560, zone: "N" },
 
-        // 中山、士林、北投 (N) - 拓荒區 (大幅擴充)
-        { name: "大龍峒保安宮", lat: 25.0731, lon: 121.5150, zone: "N" }, { name: "臺北孔廟", lat: 25.0730, lon: 121.5160, zone: "N" },
-        { name: "行天宮", lat: 25.0630, lon: 121.5330, zone: "N" }, { name: "大佳河濱公園", lat: 25.0740, lon: 121.5350, zone: "N" },
-        { name: "林安泰古厝", lat: 25.0718, lon: 121.5305, zone: "N" }, { name: "台北市立美術館", lat: 25.0725, lon: 121.5245, zone: "N" },
-        { name: "圓山大飯店廣場", lat: 25.0785, lon: 121.5265, zone: "N" }, { name: "臺北表演藝術中心(貢丸)", lat: 25.0880, lon: 121.5240, zone: "N" },
-        { name: "士林官邸", lat: 25.0930, lon: 121.5300, zone: "N" }, { name: "臺灣科學教育館", lat: 25.0960, lon: 121.5160, zone: "N" },
-        { name: "天母棒球場廣場", lat: 25.1135, lon: 121.5330, zone: "N" }, { name: "北投溫泉博物館", lat: 25.1365, lon: 121.5030, zone: "N" },
-        { name: "新北投車站", lat: 25.1370, lon: 121.5020, zone: "N" }, { name: "關渡宮廣場", lat: 25.1185, lon: 121.4640, zone: "N" },
-        { name: "芝山文化生態綠園", lat: 25.1065, lon: 121.5290, zone: "N" }, { name: "兒童新樂園大門", lat: 25.0965, lon: 121.5140, zone: "N" },
-        { name: "原住民文化主題公園", lat: 25.1050, lon: 121.5500, zone: "N" }, { name: "雙溪公園", lat: 25.0945, lon: 121.5315, zone: "N" },
-        { name: "北投公園噴水池", lat: 25.1375, lon: 121.5045, zone: "N" }, { name: "士林前港公園", lat: 25.0865, lon: 121.5200, zone: "N" }
+        // 花海遠征 (FLOWER) — 知名花田，多屬騎車/開車行程的稀有花種
+        { name: "新社花海古堡", lat: 24.1900, lon: 120.8080, zone: "FLOWER", flower: true, special: true },
+        { name: "中社觀光花市", lat: 24.3080, lon: 120.7250, zone: "FLOWER", flower: true, special: true },
+        { name: "后里花田馬場", lat: 24.3040, lon: 120.7120, zone: "FLOWER", flower: true, special: true },
+        { name: "外埔忘憂谷", lat: 24.3350, lon: 120.6600, zone: "FLOWER", flower: true, special: true },
+
+        // 海線 (COAST)
+        { name: "高美濕地", lat: 24.3120, lon: 120.5490, zone: "COAST" },
+        { name: "梧棲三井Outlet", lat: 24.2860, lon: 120.5010, zone: "COAST" }
     ];
 
     const baseBreakfasts = [
-        { name: "阜杭豆漿", lat: 25.0445, lon: 121.5245 }, { name: "鼎元豆漿", lat: 25.0325, lon: 121.5185 },
-        { name: "永樂市場 林合發油飯", lat: 25.0554, lon: 121.5101 }, { name: "大稻埕 慈聖宮原汁排骨湯", lat: 25.0592, lon: 121.5147 },
-        { name: "松山市場 無名傳統蛋餅", lat: 25.0500, lon: 121.5760 }, { name: "南機場夜市 早市米粉湯", lat: 25.0275, lon: 121.5045 },
-        { name: "萬華 亞東甜不辣", lat: 25.0350, lon: 121.5000 }, { name: "溫州街 蘿蔔絲餅", lat: 25.0210, lon: 121.5300 },
-        { name: "金華街 金華豆漿", lat: 25.0300, lon: 121.5250 }, { name: "科技大樓 興安四海豆漿", lat: 25.0280, lon: 121.5430 },
-        { name: "大安站 無名鐵板麵", lat: 25.0330, lon: 121.5430 }, { name: "信義區 陳根找茶", lat: 25.0250, lon: 121.5620 },
-        { name: "吳興街 找餐2店", lat: 25.0280, lon: 121.5580 }, { name: "內湖 來來豆漿", lat: 25.0800, lon: 121.5700 },
-        { name: "內湖 737巷 小籠包", lat: 25.0795, lon: 121.5790 }, { name: "士林 豐盛號肉蛋吐司", lat: 25.0930, lon: 121.5270 },
-        { name: "大直 傳統飯糰", lat: 25.0830, lon: 121.5460 }, { name: "重慶豆漿炸蛋餅(大龍峒)", lat: 25.0725, lon: 121.5140 },
-        { name: "雙連站旁 傳統肉羹麵", lat: 25.0575, lon: 121.5200 }, { name: "劉山東牛肉麵", lat: 25.0465, lon: 121.5145 },
-        { name: "延三夜市 汕頭原汁排骨湯", lat: 25.0665, lon: 121.5115 }, { name: "萬華 周記肉粥", lat: 25.0370, lon: 121.5025 },
-        { name: "台北車站 飯糰霸", lat: 25.0460, lon: 121.5165 }, { name: "六張犁 崇德街無名蛋餅", lat: 25.0240, lon: 121.5530 },
-        { name: "民生社區 侯門小館附近早點", lat: 25.0600, lon: 121.5600 }, { name: "華陰街 脆皮鮮奶甜甜圈", lat: 25.0495, lon: 121.5165 },
-        { name: "建中旁 林建發傻瓜乾麵", lat: 25.0310, lon: 121.5120 }, { name: "古亭 佳味蘿蔔絲餅", lat: 25.0270, lon: 121.5220 },
-        { name: "善導寺 華山市場周邊傳統早點", lat: 25.0445, lon: 121.5245 }, { name: "臨江街觀光夜市口早餐", lat: 25.0298, lon: 121.5540 },
-        { name: "大安森林公園旁 丹迪早點", lat: 25.0320, lon: 121.5340 }, { name: "永康街 誠記早市河粉", lat: 25.0328, lon: 121.5298 },
-        { name: "中正紀念堂 杭州小籠湯包", lat: 25.0324, lon: 121.5230 }, { name: "青田街 學校咖啡早午餐", lat: 25.0285, lon: 121.5315 },
-        { name: "成功市場 本地油飯老攤", lat: 25.0282, lon: 121.5442 }, { name: "遠企旁 苔毛咖啡早茶", lat: 25.0255, lon: 121.5495 },
-        { name: "忠孝SOGO旁 頂好紫琳蒸餃", lat: 25.0416, lon: 121.5465 }, { name: "延吉街 巴克斯手工蛋餅", lat: 25.0410, lon: 121.5540 },
-        { name: "國父紀念館 阿婆飯糰", lat: 25.0400, lon: 121.5590 }, { name: "松山文創 溫德早午餐", lat: 25.0445, lon: 121.5625 },
-        { name: "大巨蛋旁 軟食力軟蛋餅", lat: 25.0425, lon: 121.5570 }, { name: "四四南村 好丘貝果早餐", lat: 25.0312, lon: 121.5612 },
-        { name: "信義吳興街 找餐店創始店", lat: 25.0282, lon: 121.5591 }, { name: "象山腳下 雲南早點", lat: 25.0265, lon: 121.5710 },
-        { name: "西門町 美美早點", lat: 25.0430, lon: 121.5055 }, { name: "龍山寺 兩喜號古早味", lat: 25.0368, lon: 121.5002 },
-        { name: "剝皮寮歷史街 周記肉粥", lat: 25.0365, lon: 121.5022 }, { name: "大稻埕 永樂雞捲大王", lat: 25.0565, lon: 121.5105 },
-        { name: "西本願寺旁 傳統水煎包", lat: 25.0408, lon: 121.5080 }, { name: "長沙街 三味食堂旁炭烤吐司", lat: 25.0415, lon: 121.5040 },
-        { name: "大龍峒 老牌大腸麵線", lat: 25.0735, lon: 121.5148 }, { name: "孔廟旁 正宗汕頭乾麵", lat: 25.0728, lon: 121.5165 },
-        { name: "行天宮旁 喜多士蛋餅", lat: 25.0615, lon: 121.5310 }, { name: "大佳河濱旁 濱江市場米粉湯", lat: 25.0695, lon: 121.5365 },
-        { name: "林安泰古厝旁 傳統手工饅頭", lat: 25.0710, lon: 121.5300 }, { name: "北美館旁 圓山老字號炒麵", lat: 25.0715, lon: 121.5230 },
-        { name: "晴光市場 丁香豆花朝食", lat: 25.0628, lon: 121.5255 }, { name: "袖珍博物館旁 建國豆漿店", lat: 25.0512, lon: 121.5355 },
-        { name: "美麗華 闊旅館早午餐", lat: 25.0825, lon: 121.5550 }, { name: "台北小巨蛋 佳香點心大王", lat: 25.0525, lon: 121.5515 },
-        { name: "彩虹橋旁 松山黑輪朝食", lat: 25.0510, lon: 121.5760 }, { name: "松山慈祐宮 補給素食麵", lat: 25.0505, lon: 121.5775 },
-        { name: "迎風河濱旁 塔悠路手工飯糰", lat: 25.0710, lon: 121.5435 }, { name: "士林官邸旁 澎湃早點", lat: 25.0925, lon: 121.5290 },
-        { name: "碧湖公園 摩斯早點碧湖店", lat: 25.0820, lon: 121.5815 }, { name: "流行音樂中心旁 南港老張燒餅", lat: 25.0520, lon: 121.5995 },
-        { name: "南港瓶蓋工廠 興華米粉湯", lat: 25.0540, lon: 121.6045 }, { name: "中研院 舊莊傳統豆漿店", lat: 25.0405, lon: 121.6140 },
-        { name: "實踐大學 豆腐厝炭烤吐司", lat: 25.0850, lon: 121.5455 }, { name: "大湖公園 成功路老牌水煎包", lat: 25.0840, lon: 121.6015 },
-        { name: "工藝中心旁 牯嶺街炒麵", lat: 25.0315, lon: 121.5135 }, { name: "飛機巷口 民族東路清粥", lat: 25.0665, lon: 121.5420 },
-        { name: "信義新光 樂子美式早午餐", lat: 25.0360, lon: 121.5670 }, { name: "威秀旁 創始卡拉雞腿吐司", lat: 25.0350, lon: 121.5655 },
-        { name: "富錦街 333號早午餐咖啡", lat: 25.0605, lon: 121.5615 }, { name: "民生社區 覓熊早茶", lat: 25.0590, lon: 121.5595 },
-        { name: "榮星花園旁 五常街乾麵攤", lat: 25.0615, lon: 121.5400 }, { name: "建國啤酒廠旁 伊通街知高飯", lat: 25.0470, lon: 121.5345 },
-        { name: "忠泰美術館旁 新生手工蛋餅", lat: 25.0450, lon: 121.5380 }, { name: "通化街 口味老攤鹹粥", lat: 25.0290, lon: 121.5545 },
-        { name: "台北偶戲館旁 京華豆漿老店", lat: 25.0480, lon: 121.5610 }, { name: "微風信義 點點心早市港點", lat: 25.0390, lon: 121.5660 },
-        { name: "松山車站 麥當勞松山店", lat: 25.0495, lon: 121.5775 }, { name: "五分埔 永吉路傳統飯糰", lat: 25.0470, lon: 121.5785 },
-        { name: "西湖市場 豆漿大王", lat: 25.0825, lon: 121.5670 }, { name: "洲子公園旁 覺旅咖啡早茶", lat: 25.0815, lon: 121.5700 },
-        { name: "港墘站 達美樂旁早餐特攤", lat: 25.0795, lon: 121.5750 }, { name: "內湖路 傳統中式大餅", lat: 25.0785, lon: 121.5895 },
-        { name: "白鷺鷥保護區 成功路漢堡王", lat: 25.0730, lon: 121.6075 }, { name: "東湖 樂活早點手工饅頭", lat: 25.0678, lon: 121.6120 },
-        { name: "南港展覽館 摩斯經貿店", lat: 25.0560, lon: 121.6170 }, { name: "玉成公園 昆陽牛肉麵早市", lat: 25.0440, lon: 121.5870 },
-        { name: "後山埤站 傳統炭烤缸爐餅", lat: 25.0415, lon: 121.5820 }, { name: "新庄仔路 傳統小籠包", lat: 25.0490, lon: 121.5990 },
-        { name: "南港路 手工桿皮小籠包老店", lat: 25.0515, lon: 121.6025 }, { name: "美堤河濱 樂群二路炭烤三明治", lat: 25.0750, lon: 121.5565 },
-        { name: "內湖花市 豐滿早午餐", lat: 25.0640, lon: 121.5720 }, { name: "舊宗路 麥當勞內湖舊宗店", lat: 25.0620, lon: 121.5740 },
-        { name: "成美左岸 潭美水煎包老攤", lat: 25.0540, lon: 121.5805 }, { name: "大直 庫倫洛夫清晨咖啡", lat: 25.0720, lon: 121.5625 },
-        { name: "北投市場 矮仔財滷肉飯", lat: 25.1340, lon: 121.5005 }, { name: "石牌 無名手工蛋餅", lat: 25.1155, lon: 121.5150 }
+        { name: "東海別墅 上功早點", lat: 24.1806, lon: 120.6100 },
+        { name: "逢甲 明倫蛋餅", lat: 24.1798, lon: 120.6455 },
+        { name: "朝馬 麥味登秋紅谷店", lat: 24.1650, lon: 120.6410 },
+        { name: "市政 晨間廚房", lat: 24.1620, lon: 120.6480 },
+        { name: "水湳市場傳統早點", lat: 24.1990, lon: 120.6450 },
+        { name: "台中肉蛋吐司(一中創始)", lat: 24.1505, lon: 120.6845 },
+        { name: "老賴紅茶(第二市場)", lat: 24.1430, lon: 120.6800 },
+        { name: "第五市場 樂群蚵仔粥", lat: 24.1360, lon: 120.6710 },
+        { name: "建國市場 阿彬爌肉飯", lat: 24.1400, lon: 120.6900 },
+        { name: "忠孝夜市 台中肉圓", lat: 24.1300, lon: 120.6790 },
+        { name: "車頭 台中車站前早點", lat: 24.1372, lon: 120.6850 },
+        { name: "洪瑞珍三明治大墩店", lat: 24.1470, lon: 120.6470 },
+        { name: "美村路 樺珍包子", lat: 24.1490, lon: 120.6580 },
+        { name: "草悟道 晨間輕食", lat: 24.1495, lon: 120.6650 },
+        { name: "南屯老街 三角街肉圓早市", lat: 24.1370, lon: 120.6420 },
+        { name: "興大 康橋早餐", lat: 24.1235, lon: 120.6755 },
+        { name: "台中公園旁 天天饅頭", lat: 24.1442, lon: 120.6850 },
+        { name: "北平路蛋餅北屯店", lat: 24.1620, lon: 120.6880 },
+        { name: "東海藝術街 手作蛋餅", lat: 24.1832, lon: 120.6082 },
+        { name: "文心森林公園旁 元氣早餐", lat: 24.1492, lon: 120.6435 }
     ];
 
+    // 為每個地標周邊補一份在地早點，讓終點總能就近吃到
     const allBreakfasts = [...baseBreakfasts];
     landmarkPool.forEach((lm, index) => {
-        if (index < 75) {
+        if (!lm.special && index % 3 === 0) {
             allBreakfasts.push({
-                name: lm.name.replace("台北分館", "") + "周邊在地口碑早點",
-                lat: lm.lat + (Math.random() - 0.5) * 0.005,
-                lon: lm.lon + (Math.random() - 0.5) * 0.005
+                name: lm.name + " 周邊在地早點",
+                lat: lm.lat + (Math.random() - 0.5) * 0.004,
+                lon: lm.lon + (Math.random() - 0.5) * 0.004
             });
         }
     });
 
-    const nameAdjs = ["究極", "幻之", "沉浸式", "高能", "佛系", "硬核", "絕絕子", "逆天", "燃脂", "飆速", "熱血", "街頭", "極限", "探索"];
-    const nameNouns = ["大暴走", "特搜巡禮", "終極挑戰", "迷航記", "大冒險", "狂飆路線", "生存戰", "拉練", "制霸", "任務", "突圍"];
+    // 花朵圖鑑：一般花 & 稀有花（花園景點）
+    const commonFlowers = [
+        { e: "🌼", n: "雛菊" }, { e: "🌷", n: "鬱金香" }, { e: "🌸", n: "櫻花" }, { e: "🌺", n: "扶桑花" },
+        { e: "🌻", n: "向日葵" }, { e: "🏵️", n: "萬壽菊" }, { e: "💐", n: "洋甘菊" }, { e: "🌹", n: "玫瑰" }
+    ];
+    const rareFlowers = [
+        { e: "🌸", n: "限定櫻吹雪" }, { e: "💜", n: "薰衣草田" }, { e: "🌺", n: "九重葛花牆" },
+        { e: "🌻", n: "向日葵花海" }, { e: "🏵️", n: "波斯菊花海" }
+    ];
 
-    let finalRouteNames = []; 
+    function hashStr(s) {
+        let h = 0;
+        for (let i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) >>> 0; }
+        return h;
+    }
+    function flowerFor(lm) {
+        if (lm.flower) {
+            const r = rareFlowers[hashStr(lm.name) % rareFlowers.length];
+            return { emoji: r.e, name: r.n, rare: true };
+        }
+        const c = commonFlowers[hashStr(lm.name) % commonFlowers.length];
+        return { emoji: c.e, name: c.n, rare: false };
+    }
+
+    const nameAdjs = ["究極", "幻之", "沉浸式", "高能", "佛系", "硬核", "絕絕子", "逆天", "燃脂", "飆速", "熱血", "花漾", "極限", "探索"];
+    const nameNouns = ["大暴走", "特搜巡禮", "種花之旅", "花園拉練", "大冒險", "狂飆路線", "花海制霸", "拉練", "制霸", "任務", "突圍"];
+
+    let finalRouteNames = [];
 
     function getDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371; 
+        const R = 6371;
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLon = (lon2 - lon1) * Math.PI / 180;
         const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -302,127 +304,82 @@
 
     function generateDynamicRoute() {
         const mode = document.getElementById('kmSelect').value;
-        
-        let targetStraightKm = 4.0;
-        let biasZone = null;
-        let biasStrength = 0;
-        let maxPoints = 8;
-        let exactPoints = false; 
 
-        // 🌟 雙軌制探索邏輯啟動！
-        if (mode === "5") { 
-            targetStraightKm = 4.0; 
-            maxPoints = 4; 
-            exactPoints = true; 
-            biasZone = ["W", "S", "E"]; // 死守市中心
-            biasStrength = 0.9;
-        }
-        else if (mode === "8") { 
-            targetStraightKm = 6.8; 
-            maxPoints = 7; 
-            biasZone = ["W", "S", "E"]; // 死守市中心
-            biasStrength = 0.8;
-        }
-        else if (mode === "10") { 
-            targetStraightKm = 8.8; 
-            maxPoints = 8;
-            biasZone = ["N", "N_E"]; // 解除封印！前往士林、北投、內湖、南港
-            biasStrength = 0.75;
-        }
-        else if (mode === "15") { 
-            targetStraightKm = 12.5; 
-            maxPoints = 8;
-            biasZone = ["N", "N_E"]; // 極限拓荒火力全開
-            biasStrength = 0.85; 
-        }
+        let targetStraightKm, maxPoints, allowedZones;
+        // 雙軌探索：短程死守東海/西屯，長程跨進台中市區花園
+        if (mode === "5")       { targetStraightKm = 3.6;  maxPoints = 5; allowedZones = ["TH"]; }
+        else if (mode === "8")  { targetStraightKm = 6.0;  maxPoints = 7; allowedZones = ["TH"]; }
+        else if (mode === "10") { targetStraightKm = 7.8;  maxPoints = 8; allowedZones = ["TH", "CENTRAL", "S"]; }
+        else                    { targetStraightKm = 11.5; maxPoints = 9; allowedZones = ["TH", "CENTRAL", "N", "S"]; }
 
-        let currentLat = 25.0330; 
-        let currentLon = 121.5358;
+        // 跑步路線只走跑得到的分區；遠方知名花海（新社/后里/中社/外埔）留給花園圖鑑
+        let pool = landmarkPool.filter(p => allowedZones.includes(p.zone));
+
+        let currentLat = START.lat;
+        let currentLon = START.lon;
         let totalDistance = 0;
-        let availablePool = [...landmarkPool];
         let selectedPoints = [];
         finalRouteNames = [];
+        let visited = [{ lat: currentLat, lon: currentLon }];
+        let used = new Set();
 
-        let visitedCoords = [{ lat: currentLat, lon: currentLon }];
-
-        while (selectedPoints.length < maxPoints) {
-            if (!exactPoints && totalDistance >= targetStraightKm) {
-                break;
-            }
-
+        while (selectedPoints.length < maxPoints && totalDistance < targetStraightKm) {
             let slotsLeft = maxPoints - selectedPoints.length;
-            let distLeft = targetStraightKm - totalDistance;
-            
-            if (exactPoints && distLeft <= 0) {
-                distLeft = 0.5 * slotsLeft; 
-            }
-            
-            let targetStep = distLeft / slotsLeft;
-            let minAllowed = targetStep * 0.4;
-            let maxAllowed = targetStep * 2.0;
+            let desiredStep = Math.max(0.6, (targetStraightKm - totalDistance) / slotsLeft);
 
-            if (slotsLeft === 1) {
-                minAllowed = distLeft * 0.8;
-                maxAllowed = distLeft * 1.5;
-            }
+            let candidates = pool.filter(p =>
+                !used.has(p.name) &&
+                !visited.some(v => getDistance(p.lat, p.lon, v.lat, v.lon) < 0.45)
+            );
+            if (candidates.length === 0) break;
 
-            let candidates = availablePool.filter(p => {
-                let d = getDistance(currentLat, currentLon, p.lat, p.lon);
-                if (d < minAllowed || d > maxAllowed) return false;
-
-                let tooCloseToHistory = visitedCoords.some(visited => {
-                    return getDistance(p.lat, p.lon, visited.lat, visited.lon) < (minAllowed * 0.8);
-                });
-                
-                return !tooCloseToHistory;
+            // 依「跳躍距離最接近理想步長」排序，能自動跨過地標稀疏的空檔
+            candidates.sort((a, b) =>
+                Math.abs(getDistance(currentLat, currentLon, a.lat, a.lon) - desiredStep) -
+                Math.abs(getDistance(currentLat, currentLon, b.lat, b.lon) - desiredStep)
+            );
+            // 先把跳點控制在合理步長內（關卡數才夠、距離才不會爆量）；真的沒有再放寬跨空檔
+            let windowed = candidates.filter(c => {
+                let d = getDistance(currentLat, currentLon, c.lat, c.lon);
+                return d >= desiredStep * 0.45 && d <= desiredStep * 1.7;
             });
+            let base = windowed.length > 0 ? windowed : candidates;
+            let topK = base.slice(0, Math.min(6, base.length));
 
-            // 雙軌制區域引導權重
-            if (biasZone && Math.random() < biasStrength && candidates.length > 0) {
-                let priorityCandidates = candidates.filter(c => biasZone.includes(c.zone));
-                if (priorityCandidates.length > 0) {
-                    candidates = priorityCandidates;
-                }
-            }
+            // 種花引導：多數關卡優先落在有花的花園景點
+            let flowerTop = topK.filter(c => c.flower);
+            let pickFrom = (flowerTop.length > 0 && Math.random() < 0.6) ? flowerTop : topK;
 
-            if (candidates.length === 0) {
-                candidates = availablePool.filter(p => {
-                    let d = getDistance(currentLat, currentLon, p.lat, p.lon);
-                    return d >= minAllowed * 0.5 && d <= maxAllowed * 1.5;
-                });
-                if (candidates.length === 0) {
-                    availablePool.sort((a, b) => {
-                        let distA = Math.abs(getDistance(currentLat, currentLon, a.lat, a.lon) - targetStep);
-                        let distB = Math.abs(getDistance(currentLat, currentLon, b.lat, b.lon) - targetStep);
-                        return distA - distB;
-                    });
-                    candidates = [availablePool[0]];
-                }
-            }
-
-            let chosen = candidates[Math.floor(Math.random() * candidates.length)];
+            let chosen = pickFrom[Math.floor(Math.random() * pickFrom.length)];
             let dist = getDistance(currentLat, currentLon, chosen.lat, chosen.lon);
-            
+            let bloom = flowerFor(chosen);
+
             totalDistance += dist;
-            selectedPoints.push({ name: chosen.name, dist: dist.toFixed(1) });
+            selectedPoints.push({ name: chosen.name, dist: dist.toFixed(1), flower: bloom });
             finalRouteNames.push(chosen.name);
+            used.add(chosen.name);
 
             currentLat = chosen.lat;
             currentLon = chosen.lon;
-            
-            visitedCoords.push({ lat: currentLat, lon: currentLon });
-            availablePool = availablePool.filter(p => p.name !== chosen.name);
+            visited.push({ lat: currentLat, lon: currentLon });
         }
 
-        let nearbyBreakfasts = allBreakfasts.filter(b => getDistance(currentLat, currentLon, b.lat, b.lon) <= 0.5);
+        let nearbyBreakfasts = allBreakfasts.filter(b => getDistance(currentLat, currentLon, b.lat, b.lon) <= 0.6);
         if (nearbyBreakfasts.length === 0) {
-            nearbyBreakfasts = allBreakfasts.filter(b => getDistance(currentLat, currentLon, b.lat, b.lon) <= 1.0);
+            nearbyBreakfasts = allBreakfasts.filter(b => getDistance(currentLat, currentLon, b.lat, b.lon) <= 1.2);
         }
-        
+        if (nearbyBreakfasts.length === 0) {
+            nearbyBreakfasts = [...allBreakfasts].sort((a, b) =>
+                getDistance(currentLat, currentLon, a.lat, a.lon) - getDistance(currentLat, currentLon, b.lat, b.lon)
+            ).slice(0, 1);
+        }
+
         let chosenBreakfast = nearbyBreakfasts[Math.floor(Math.random() * nearbyBreakfasts.length)];
         let bDist = getDistance(currentLat, currentLon, chosenBreakfast.lat, chosenBreakfast.lon);
 
         let randomName = nameAdjs[Math.floor(Math.random() * nameAdjs.length)] + nameNouns[Math.floor(Math.random() * nameNouns.length)];
+
+        let flowerBar = selectedPoints.map(p => p.flower.emoji).join(" ");
 
         let htmlContent = `
             <div class="stats-badge">📜 ${randomName} (直線累積 ${totalDistance.toFixed(1)}K)</div>
@@ -432,34 +389,39 @@
             </div>
             <ul class="point-list">
                 <li class="point-item">
-                    <span class="p-name">📍 起點：大安森林公園</span>
+                    <span class="p-name">📍 起點：${START.name}</span>
                     <span class="p-dist">START</span>
                 </li>
         `;
-        
+
         selectedPoints.forEach((p, index) => {
             htmlContent += `
                 <li class="point-item">
-                    <span class="p-name">📸 CP ${index + 1}：${p.name}</span>
+                    <span class="p-name">📸 CP ${index + 1}：${p.name}<br>
+                        <span class="p-flower">${p.flower.emoji} 種下 ${p.flower.name}${p.flower.rare ? "（稀有）" : ""}</span>
+                    </span>
                     <span class="p-dist">+${p.dist}K</span>
                 </li>
             `;
         });
-        
+
         htmlContent += `
             </ul>
+            <div class="flower-summary">
+                🌱 本次可種下 ${selectedPoints.length} 朵花：${flowerBar}
+            </div>
             <div class="breakfast-box">
                 🍳 終點補給：${chosenBreakfast.name}<br>
                 <span style="font-size: 0.82em; color: #f1f2f6;">(距離最後一站僅 ${(bDist*1000).toFixed(0)} 公尺，馬上吃到！)</span>
             </div>
         `;
-        
+
         const displayDiv = document.getElementById('routeDisplay');
         const googleBtn = document.getElementById('googleBtn');
-        
+
         displayDiv.style.display = 'none';
         googleBtn.style.display = 'none';
-        
+
         setTimeout(() => {
             displayDiv.innerHTML = htmlContent;
             displayDiv.style.display = 'block';
@@ -469,11 +431,11 @@
 
     function openGoogleMaps() {
         if (finalRouteNames.length === 0) return;
-        const origin = encodeURIComponent("台北大安森林公園");
-        const destination = encodeURIComponent("台北 " + finalRouteNames[finalRouteNames.length - 1]);
+        const origin = encodeURIComponent("台中 " + START.name);
+        const destination = encodeURIComponent("台中 " + finalRouteNames[finalRouteNames.length - 1]);
         let waypointsArr = [];
-        for(let i = 0; i < finalRouteNames.length - 1; i++) {
-            waypointsArr.push(encodeURIComponent("台北 " + finalRouteNames[i]));
+        for (let i = 0; i < finalRouteNames.length - 1; i++) {
+            waypointsArr.push(encodeURIComponent("台中 " + finalRouteNames[i]));
         }
         const waypoints = waypointsArr.join('|');
         const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=walking`;
